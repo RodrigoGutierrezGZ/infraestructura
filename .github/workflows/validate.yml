@@ -1,0 +1,117 @@
+name: Infrastructure Validation
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # ==========================================
+  # Validate Ansible playbooks
+  # ==========================================
+  validate-ansible:
+    name: 🎭 Validate Ansible
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Install Ansible
+        run: |
+          pip install ansible ansible-core ansible-lint
+          ansible-galaxy install -r ansible/requirements.yml || true
+
+      - name: 🔍 Lint Ansible playbooks
+        run: |
+          cd ansible
+          ansible-lint playbook.yml || true
+
+      - name: ✅ Validate Ansible syntax
+        run: |
+          cd ansible
+          ansible-playbook --syntax-check playbook.yml
+
+      - name: 🧪 Test Ansible inventory
+        run: |
+          cd ansible
+          ansible-inventory --list -i inventory/hosts > /dev/null
+
+  # ==========================================
+  # Validate Docker configurations
+  # ==========================================
+  validate-docker:
+    name: 🐳 Validate Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔍 Lint Dockerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile
+
+      - name: ✅ Validate Docker Compose
+        run: |
+          docker-compose -f docker-compose.yml config > /dev/null
+          docker-compose -f docker-compose.dev.yml config > /dev/null
+
+      - name: 🏗️ Build test image
+        run: |
+          docker build -t test-image -f docker/Dockerfile .
+
+  # ==========================================
+  # Security scan
+  # ==========================================
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: 📊 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ==========================================
+  # Documentation check
+  # ==========================================
+  docs-check:
+    name: 📚 Documentation Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📝 Check README exists
+        run: |
+          [ -f README.md ] || (echo "README.md is missing" && exit 1)
+
+      - name: 🔍 Validate markdown
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: '**/*.md'
