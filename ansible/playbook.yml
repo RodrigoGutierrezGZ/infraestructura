@@ -1,0 +1,92 @@
+---
+# =========================================
+# Playbook principal para despliegue de Laravel API
+# =========================================
+- name: Deploy Laravel API with Docker
+  hosts: web_servers
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    # Variables del proyecto
+    project_name: "laravel-api"
+    app_user: "laravel"
+    app_group: "laravel"
+    app_directory: "/opt/{{ project_name }}"
+    docker_compose_version: "v2.23.0"
+    
+    # Variables de base de datos
+    mysql_root_password: "{{ vault_mysql_root_password | default('secure_root_password') }}"
+    mysql_database: "laravel_api"
+    mysql_user: "laravel"
+    mysql_password: "{{ vault_mysql_password | default('secure_password') }}"
+    
+    # Variables de aplicación
+    app_key: "{{ vault_app_key | default('base64:your-app-key-here') }}"
+    app_env: "{{ deploy_env | default('production') }}"
+    app_debug: "{{ 'true' if app_env == 'development' else 'false' }}"
+
+  pre_tasks:
+    - name: Update package cache (Ubuntu)
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: Update package cache (CentOS/RHEL)
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+  roles:
+    - role: laravel-api
+      tags: ['app', 'deploy']
+
+  post_tasks:
+    - name: Verify application is running
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ app_port }}/health"
+        method: GET
+        status_code: 200
+      retries: 5
+      delay: 10
+      tags: ['verify', 'health-check']
+
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ================================
+          🚀 DEPLOYMENT COMPLETED SUCCESSFULLY!
+          ================================
+          Application: {{ project_name }}
+          Environment: {{ app_env }}
+          URL: http://{{ ansible_default_ipv4.address }}:{{ app_port }}
+          Health Check: http://{{ ansible_default_ipv4.address }}:{{ app_port }}/health
+          API Endpoints: http://{{ ansible_default_ipv4.address }}:{{ app_port }}/api/products
+          ================================
+      tags: ['summary']
+
+# =========================================
+# Playbook para rollback en caso de fallas
+# =========================================
+- name: Rollback deployment
+  hosts: web_servers
+  become: yes
+  tags: ['never', 'rollback']
+  
+  tasks:
+    - name: Stop current containers
+      docker_compose:
+        project_src: "{{ app_directory }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Restore from backup
+      command: docker-compose up -d
+      args:
+        chdir: "{{ app_directory }}/backup"
+      when: backup_directory is defined
+
+    - name: Rollback notification
+      debug:
+        msg: "🔄 Rollback completed. Previous version restored."

@@ -1,0 +1,31 @@
+---
+# =========================================
+# Handlers para el role laravel-api
+# =========================================
+
+- name: restart application
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    restarted: yes
+  listen: "restart application"
+  tags: ['handlers']
+
+- name: rebuild application
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    build: yes
+    state: present
+  listen: "rebuild application"
+  tags: ['handlers']
+
+- name: clear cache
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    services: app
+    run: |
+      php artisan config:clear &&
+      php artisan route:clear &&
+      php artisan view:clear &&
+      php artisan cache:clear
+  listen: "clear cache"
+  tags: ['handlers']

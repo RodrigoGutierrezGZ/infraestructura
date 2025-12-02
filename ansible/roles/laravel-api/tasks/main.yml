@@ -1,0 +1,141 @@
+---
+# =========================================
+# Tareas principales del role laravel-api
+# =========================================
+
+- name: Create application user
+  user:
+    name: "{{ app_user }}"
+    group: "{{ app_group }}"
+    system: yes
+    shell: /bin/bash
+    home: "{{ app_directory }}"
+    create_home: yes
+  tags: ['setup', 'user']
+
+- name: Install required packages
+  package:
+    name:
+      - docker.io
+      - docker-compose
+      - git
+      - curl
+      - unzip
+      - python3-pip
+    state: present
+  tags: ['setup', 'packages']
+
+- name: Install Docker Compose
+  pip:
+    name: docker-compose
+    state: present
+  tags: ['setup', 'docker']
+
+- name: Add user to docker group
+  user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: yes
+  tags: ['setup', 'docker']
+
+- name: Start and enable Docker service
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+  tags: ['setup', 'docker']
+
+- name: Create application directory
+  file:
+    path: "{{ app_directory }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  tags: ['setup', 'directories']
+
+- name: Clone application repository
+  git:
+    repo: "https://github.com/RodrigoGutierrezGZ/api-laravel.git"
+    dest: "{{ app_directory }}/api-laravel"
+    version: main
+    force: yes
+  become_user: "{{ app_user }}"
+  notify: restart application
+  tags: ['deploy', 'git']
+
+- name: Copy infrastructure files
+  synchronize:
+    src: "{{ playbook_dir }}/../docker/"
+    dest: "{{ app_directory }}/infraestructura/docker/"
+    delete: yes
+    recursive: yes
+  become_user: "{{ app_user }}"
+  tags: ['deploy', 'files']
+
+- name: Generate Laravel environment file
+  template:
+    src: .env.production.j2
+    dest: "{{ app_directory }}/api-laravel/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0640'
+  notify: restart application
+  tags: ['deploy', 'config']
+
+- name: Create database directory
+  file:
+    path: "{{ app_directory }}/api-laravel/database"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  tags: ['deploy', 'database']
+
+- name: Build Docker images
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    build: yes
+  become_user: "{{ app_user }}"
+  tags: ['deploy', 'build']
+
+- name: Start application containers
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    state: present
+    pull: yes
+  become_user: "{{ app_user }}"
+  tags: ['deploy', 'start']
+
+- name: Run database migrations
+  docker_compose:
+    project_src: "{{ app_directory }}/infraestructura/docker"
+    services: app
+    run: php artisan migrate --force
+  become_user: "{{ app_user }}"
+  tags: ['deploy', 'migrate']
+
+- name: Wait for application to be ready
+  wait_for:
+    port: "{{ app_port }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    delay: 10
+    timeout: 300
+  tags: ['deploy', 'wait']
+
+- name: Setup log rotation
+  template:
+    src: laravel-api.logrotate.j2
+    dest: /etc/logrotate.d/laravel-api
+    owner: root
+    group: root
+    mode: '0644'
+  tags: ['setup', 'logs']
+
+- name: Setup firewall rules
+  ufw:
+    rule: allow
+    port: "{{ app_port }}"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags: ['setup', 'firewall']

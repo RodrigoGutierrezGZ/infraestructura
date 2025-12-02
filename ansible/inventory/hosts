@@ -1,0 +1,26 @@
+[production]
+# Servidor de producción
+production-server ansible_host=YOUR_PRODUCTION_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[staging]
+# Servidor de staging/testing
+staging-server ansible_host=YOUR_STAGING_IP ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/id_rsa
+
+[development]
+# Servidor de desarrollo local
+localhost ansible_connection=local
+
+[web_servers:children]
+production
+staging
+development
+
+[web_servers:vars]
+# Variables globales para todos los servidores web
+ansible_python_interpreter=/usr/bin/python3
+app_name=laravel_api
+app_user=laravel
+app_group=laravel
+app_port=8000
+db_name=laravel_api
+db_user=laravel
