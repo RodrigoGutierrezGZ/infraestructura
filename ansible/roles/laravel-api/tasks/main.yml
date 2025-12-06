@@ -1,8 +1,10 @@
 ---
 # =========================================
 # Tareas principales del role laravel-api
+# Cumple con requisitos Fase 2 del PDF
 # =========================================
 
+# SETUP INICIAL - Preparación del entorno
 - name: Create application user
   user:
     name: "{{ app_user }}"
@@ -45,67 +47,78 @@
     enabled: yes
   tags: ['setup', 'docker']
 
-- name: Create application directory
+# 1. REQUISITO PDF: Asegurar que el directorio del proyecto existe en la VM
+- name: Create project directory
   file:
     path: "{{ app_directory }}"
     state: directory
+    mode: '0755'
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
-    mode: '0755'
   tags: ['setup', 'directories']
 
-- name: Clone application repository
-  git:
-    repo: "https://github.com/RodrigoGutierrezGZ/api-laravel.git"
-    dest: "{{ app_directory }}/api-laravel"
-    version: main
-    force: yes
-  become_user: "{{ app_user }}"
-  notify: restart application
-  tags: ['deploy', 'git']
-
-- name: Copy infrastructure files
-  synchronize:
-    src: "{{ playbook_dir }}/../docker/"
-    dest: "{{ app_directory }}/infraestructura/docker/"
-    delete: yes
-    recursive: yes
-  become_user: "{{ app_user }}"
+# 2. REQUISITO PDF: Transferencia del archivo docker-compose.yml [cite: 48]
+- name: Copy docker-compose file
+  template:
+    src: docker-compose.yml.j2  # Template con variables de entorno
+    dest: "{{ app_directory }}/docker-compose.yml"
+    mode: '0644'
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
   tags: ['deploy', 'files']
+
+# Alternativa si docker-compose.yml es archivo fijo:
+# - name: Copy docker-compose file (fixed)
+#   copy:
+#     src: docker-compose.yml
+#     dest: "{{ app_directory }}/docker-compose.yml"
+#     mode: '0644'
+#     owner: "{{ app_user }}"
+#     group: "{{ app_group }}"
 
 - name: Generate Laravel environment file
   template:
     src: .env.production.j2
-    dest: "{{ app_directory }}/api-laravel/.env"
+    dest: "{{ app_directory }}/.env"
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: '0640'
-  notify: restart application
   tags: ['deploy', 'config']
 
-- name: Create database directory
-  file:
-    path: "{{ app_directory }}/api-laravel/database"
-    state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_group }}"
-    mode: '0755'
-  tags: ['deploy', 'database']
+# 3. REQUISITO PDF: Login al Registry (necesario si el repo es privado)
+- name: Log into Docker Registry
+  docker_login:
+    registry_url: ghcr.io  # GitHub Container Registry
+    username: "{{ lookup('env', 'DOCKER_USER') | default(ansible_user) }}"
+    password: "{{ lookup('env', 'DOCKER_PASSWORD') | default(github_token) }}"
+  no_log: true  # Por seguridad - no mostrar credenciales en logs
+  tags: ['deploy', 'registry']
+  when: docker_registry_login | default(true)
 
-- name: Build Docker images
-  docker_compose:
-    project_src: "{{ app_directory }}/infraestructura/docker"
-    build: yes
+# 4. REQUISITO PDF: Descarga de la imagen del Registry [cite: 49]
+- name: Pull latest Docker image
+  docker_image:
+    name: "{{ docker_image }}"
+    source: pull
+    force_source: yes
   become_user: "{{ app_user }}"
-  tags: ['deploy', 'build']
+  tags: ['deploy', 'pull']
 
-- name: Start application containers
+# 5. REQUISITO PDF: Ejecución del comando docker-compose up -d [cite: 51]
+- name: Start application with Docker Compose
   docker_compose:
-    project_src: "{{ app_directory }}/infraestructura/docker"
+    project_src: "{{ app_directory }}"
     state: present
-    pull: yes
+    recreate: always
+    pull: yes  # Asegura usar la imagen fresca
   become_user: "{{ app_user }}"
+  register: output
   tags: ['deploy', 'start']
+
+- name: Debug Docker Output
+  debug:
+    var: output
+  tags: ['deploy', 'debug']
 
 - name: Run database migrations
   docker_compose:
@@ -132,10 +145,34 @@
     mode: '0644'
   tags: ['setup', 'logs']
 
-- name: Setup firewall rules
+- name: Setup firewall rules - SSH (Port 22)
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags: ['setup', 'firewall']
+
+- name: Setup firewall rules - HTTP (Port 80)
+  ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+  when: ansible_os_family == "Debian"
+  tags: ['setup', 'firewall']
+
+- name: Setup firewall rules - Application Port
   ufw:
     rule: allow
     port: "{{ app_port }}"
     proto: tcp
+  when: ansible_os_family == "Debian"
+  tags: ['setup', 'firewall']
+
+- name: Enable UFW firewall
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
   when: ansible_os_family == "Debian"
   tags: ['setup', 'firewall']

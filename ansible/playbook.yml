@@ -10,16 +10,27 @@
   vars:
     # Variables del proyecto
     project_name: "laravel-api"
+    app_name: "laravel-api"
     app_user: "laravel"
     app_group: "laravel"
     app_directory: "/opt/{{ project_name }}"
+    app_port: 8000
     docker_compose_version: "v2.23.0"
     
-    # Variables de base de datos
-    mysql_root_password: "{{ vault_mysql_root_password | default('secure_root_password') }}"
-    mysql_database: "laravel_api"
-    mysql_user: "laravel"
-    mysql_password: "{{ vault_mysql_password | default('secure_password') }}"
+    # Variables Docker Registry - REQUISITOS FASE 2 PDF
+    docker_image: "ghcr.io/rodrigogutierrezgz/api-laravel:latest"
+    docker_registry_login: true
+    github_token: "{{ vault_github_token | default('') }}"
+    
+    # Variables de base de datos - COINCIDEN CON TEMPLATE
+    db_name: "laravel_api"
+    db_user: "laravel"
+    db_password: "{{ vault_mysql_password | default('secure_password') }}"
+    db_port: 3306
+    
+    # Variables Redis
+    redis_password: "{{ vault_redis_password | default('redis_secret') }}"
+    redis_port: 6379
     
     # Variables de aplicación
     app_key: "{{ vault_app_key | default('base64:your-app-key-here') }}"
