@@ -1,0 +1,149 @@
+---
+# Playbook simplificado para deployment directo en VM
+- name: Deploy Laravel API to VM
+  hosts: all
+  become: yes
+  gather_facts: yes
+  
+  vars:
+    docker_image: "{{ docker_image | default('ghcr.io/rodrigogutierrezgz/api-laravel:latest') }}"
+    app_name: "laravel-api"
+    app_port: 8000
+    container_name: "{{ app_name }}-app"
+    
+  tasks:
+    - name: 📋 Display deployment info
+      debug:
+        msg: |
+          Starting deployment:
+          - Image: {{ docker_image }}
+          - Container: {{ container_name }}
+          - Port: {{ app_port }}
+
+    - name: 🐳 Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: 🔐 Log in to GitHub Container Registry
+      community.docker.docker_login:
+        registry: ghcr.io
+        username: rodrigogutierrezgz
+        password: "{{ lookup('env', 'GITHUB_TOKEN') | default('') }}"
+        reauthorize: yes
+      when: lookup('env', 'GITHUB_TOKEN') | default('') != ''
+      ignore_errors: yes
+
+    - name: 🛑 Stop existing container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: stopped
+      ignore_errors: yes
+
+    - name: 🗑️ Remove existing container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: 📥 Pull latest Docker image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+      register: pull_result
+
+    - name: 🚀 Run new container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ app_port }}:8000"
+        env:
+          APP_NAME: "Laravel API"
+          APP_ENV: "{{ environment | default('production') }}"
+          APP_KEY: "base64:your-generated-key-here"
+          APP_DEBUG: "false"
+          APP_URL: "http://{{ ansible_default_ipv4.address }}:{{ app_port }}"
+          DB_CONNECTION: sqlite
+          DB_DATABASE: /var/www/html/database/database.sqlite
+          CACHE_DRIVER: file
+          SESSION_DRIVER: file
+          QUEUE_CONNECTION: sync
+        volumes:
+          - "/var/lib/{{ app_name }}/storage:/var/www/html/storage"
+          - "/var/lib/{{ app_name }}/database:/var/www/html/database"
+        networks:
+          - name: "{{ app_name }}-network"
+        healthcheck:
+          test: ["CMD", "curl", "-f", "http://localhost:8000/api/products"]
+          interval: 30s
+          timeout: 10s
+          retries: 3
+          start_period: 40s
+
+    - name: 📁 Ensure storage directories exist
+      file:
+        path: "/var/lib/{{ app_name }}/{{ item }}"
+        state: directory
+        mode: '0777'
+      loop:
+        - storage
+        - storage/app
+        - storage/framework
+        - storage/framework/cache
+        - storage/framework/sessions
+        - storage/framework/views
+        - storage/logs
+        - database
+
+    - name: 🗃️ Initialize SQLite database
+      command: docker exec {{ container_name }} touch /var/www/html/database/database.sqlite
+      ignore_errors: yes
+
+    - name: 🔧 Set database permissions
+      command: docker exec {{ container_name }} chmod 666 /var/www/html/database/database.sqlite
+      ignore_errors: yes
+
+    - name: 🔄 Run database migrations
+      command: docker exec {{ container_name }} php artisan migrate --force
+      register: migrate_result
+      ignore_errors: yes
+
+    - name: 📊 Show migration result
+      debug:
+        var: migrate_result.stdout_lines
+      when: migrate_result.stdout_lines is defined
+
+    - name: ⏳ Wait for application to be ready
+      wait_for:
+        host: "{{ ansible_default_ipv4.address }}"
+        port: "{{ app_port }}"
+        delay: 5
+        timeout: 60
+
+    - name: 🩺 Health check
+      uri:
+        url: "http://{{ ansible_default_ipv4.address }}:{{ app_port }}/api/products"
+        method: GET
+        status_code: 200
+      retries: 5
+      delay: 10
+      register: health_check
+      ignore_errors: yes
+
+    - name: ✅ Deployment summary
+      debug:
+        msg: |
+          ================================
+          🎉 DEPLOYMENT SUCCESSFUL!
+          ================================
+          Container: {{ container_name }}
+          Image: {{ docker_image }}
+          URL: http://{{ ansible_default_ipv4.address }}:{{ app_port }}
+          API: http://{{ ansible_default_ipv4.address }}:{{ app_port }}/api/products
+          Health: {{ 'OK' if health_check.status == 200 else 'PENDING' }}
+          ================================

@@ -1,0 +1,8 @@
+# Ansible Galaxy requirements
+# Collections needed for deployment
+
+collections:
+  - name: community.docker
+    version: ">=3.0.0"
+  - name: community.general
+    version: ">=7.0.0"
