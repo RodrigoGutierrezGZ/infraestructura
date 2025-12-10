@@ -1,5 +1,5 @@
 [staging]
-staging-server ansible_host=34.227.79.104 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/laravel-deployment-key.pem
+staging-server ansible_host=107.23.190.246 ansible_user=ubuntu ansible_ssh_private_key_file=~/.ssh/laravel-deployment-key.pem
 
 [staging:vars]
 ansible_python_interpreter=/usr/bin/python3
