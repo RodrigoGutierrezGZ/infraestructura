@@ -106,11 +106,11 @@
 
 # 5. REQUISITO PDF: Ejecución del comando docker-compose up -d [cite: 51]
 - name: Start application with Docker Compose
-  docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}"
     state: present
     recreate: always
-    pull: yes  # Asegura usar la imagen fresca
+    pull: always
   become_user: "{{ app_user }}"
   register: output
   tags: ['deploy', 'start']
