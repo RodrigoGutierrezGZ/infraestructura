@@ -4,28 +4,25 @@
 # =========================================
 
 - name: restart application
-  docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}/infraestructura/docker"
-    restarted: yes
+    state: restarted
   listen: "restart application"
   tags: ['handlers']
 
 - name: rebuild application
-  docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}/infraestructura/docker"
-    build: yes
+    build: always
     state: present
   listen: "rebuild application"
   tags: ['handlers']
 
 - name: clear cache
-  docker_compose:
+  community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}/infraestructura/docker"
-    services: app
-    run: |
-      php artisan config:clear &&
-      php artisan route:clear &&
-      php artisan view:clear &&
-      php artisan cache:clear
+    services: [app]
+    run:
+      cmd: ["/bin/sh", "-c", "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear"]
   listen: "clear cache"
   tags: ['handlers']
