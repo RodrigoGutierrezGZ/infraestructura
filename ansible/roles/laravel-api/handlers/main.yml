@@ -18,9 +18,9 @@
   listen: "Rebuild application"
   tags: ['handlers']
 
-- name: clear cache
+- name: Clear cache
   community.docker.docker_container_exec:
     container: "{{ app_name }}"
     command: /bin/sh -c "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear"
-  listen: "clear cache"
+  listen: "Clear cache"
   tags: ['handlers']
