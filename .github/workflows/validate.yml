@@ -56,8 +56,8 @@ jobs:
 
       - name: ✅ Validate Docker Compose
         run: |
-          docker-compose -f docker-compose.yml config > /dev/null
-          docker-compose -f docker-compose.dev.yml config > /dev/null
+          docker compose -f docker-compose.yml config > /dev/null
+          docker compose -f docker-compose.dev.yml config > /dev/null
 
   # ==========================================
   # Security scan
