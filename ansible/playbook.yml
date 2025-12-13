@@ -55,7 +55,7 @@
 
   post_tasks:
     - name: Verify application is running
-      uri:
+      ansible.builtin.uri:
         url: "http://{{ ansible_default_ipv4.address }}:{{ app_port }}/health"
         method: GET
         status_code: 200
@@ -64,7 +64,7 @@
       tags: ['verify', 'health-check']
 
     - name: Display deployment summary
-      debug:
+      ansible.builtin.debug:
         msg: |
           ================================
           🚀 DEPLOYMENT COMPLETED SUCCESSFULLY!
@@ -82,7 +82,7 @@
 # =========================================
 - name: Rollback deployment
   hosts: web_servers
-  become: yes
+  become: true
   tags: ['never', 'rollback']
 
   tasks:
@@ -90,14 +90,15 @@
       community.docker.docker_compose_v2:
         project_src: "{{ app_directory }}"
         state: absent
-      ignore_errors: yes
+      failed_when: false
 
     - name: Restore from backup
-      command: docker-compose up -d
+      ansible.builtin.command: docker-compose up -d
       args:
         chdir: "{{ app_directory }}/backup"
       when: backup_directory is defined
+      changed_when: true
 
     - name: Rollback notification
-      debug:
+      ansible.builtin.debug:
         msg: "🔄 Rollback completed. Previous version restored."

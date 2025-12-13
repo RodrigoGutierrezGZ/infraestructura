@@ -3,19 +3,19 @@
 # Handlers para el role laravel-api
 # =========================================
 
-- name: restart application
+- name: Restart application
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}/infraestructura/docker"
     state: restarted
-  listen: "restart application"
+  listen: "Restart application"
   tags: ['handlers']
 
-- name: rebuild application
+- name: Rebuild application
   community.docker.docker_compose_v2:
     project_src: "{{ app_directory }}/infraestructura/docker"
     build: always
     state: present
-  listen: "rebuild application"
+  listen: "Rebuild application"
   tags: ['handlers']
 
 - name: clear cache

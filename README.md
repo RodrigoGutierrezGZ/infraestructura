@@ -1,10 +1,11 @@
 # 🚀 Laravel API - Infraestructura
 
-Automatización completa de despliegue con **Docker**, **Docker Compose** y **Ansible** para el proyecto Laravel API.
+Automatización completa de despliegue con **Docker**, **Docker Compose**
+y **Ansible** para el proyecto Laravel API.
 
 ## 📁 Estructura del Proyecto
 
-```
+```text
 infraestructura/
 ├── docker/
 │   ├── Dockerfile              # Imagen Docker multi-stage optimizada
@@ -37,6 +38,7 @@ chmod +x scripts/setup.sh
 ```
 
 Este script instalará automáticamente:
+
 - ✅ Docker y Docker Compose
 - ✅ Ansible
 - ✅ Configuraciones base
@@ -51,6 +53,7 @@ nano ansible/inventory/hosts
 ```
 
 Ejemplo de configuración:
+
 ```ini
 [production]
 prod-server ansible_host=192.168.1.100 ansible_user=ubuntu
@@ -143,7 +146,8 @@ docker-compose logs -f redis
 ### Logs con Ansible
 
 Los logs de despliegue se guardan automáticamente en:
-```
+
+```text
 infraestructura/deploy_YYYYMMDD_HHMMSS.log
 ```
 
@@ -197,6 +201,7 @@ ansible-vault create ansible/group_vars/all/vault.yml
 ```
 
 Contenido ejemplo:
+
 ```yaml
 vault_mysql_root_password: "super_secure_password"
 vault_mysql_password: "secure_password"
@@ -206,6 +211,7 @@ vault_app_key: "base64:your-generated-app-key"
 ### Firewall y SSL
 
 El playbook configura automáticamente:
+
 - ✅ UFW firewall rules
 - ✅ Headers de seguridad en Nginx
 - ✅ Compresión Gzip
@@ -216,24 +222,28 @@ El playbook configura automáticamente:
 ### Problemas Comunes
 
 1. **Error de permisos Docker**:
+
    ```bash
    sudo usermod -aG docker $USER
    newgrp docker
    ```
 
 2. **Contenedor no inicia**:
+
    ```bash
    docker-compose logs app
    docker-compose exec app php artisan config:clear
    ```
 
 3. **Base de datos no conecta**:
+
    ```bash
    docker-compose exec mysql mysql -u root -p -e "SHOW DATABASES;"
    docker-compose restart mysql
    ```
 
 4. **Ansible no conecta**:
+
    ```bash
    ansible all -i ansible/inventory/hosts -m ping -vvv
    # Verificar SSH keys y configuración
@@ -242,6 +252,7 @@ El playbook configura automáticamente:
 ### Rollback Automático
 
 En caso de falla, ejecutar rollback:
+
 ```bash
 ./scripts/deploy.sh production --rollback
 ```
