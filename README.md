@@ -260,6 +260,7 @@ En caso de falla, ejecutar rollback:
 ## 📈 Optimizaciones Implementadas
 
 ### Docker
+
 - ✅ Multi-stage builds
 - ✅ Cache de layers optimizado
 - ✅ Imágenes Alpine (menores)
@@ -268,6 +269,7 @@ En caso de falla, ejecutar rollback:
 - ✅ Security contexts
 
 ### Nginx
+
 - ✅ Compresión Gzip
 - ✅ Headers de seguridad
 - ✅ Cache de assets estáticos
@@ -275,6 +277,7 @@ En caso de falla, ejecutar rollback:
 - ✅ SSL ready
 
 ### Laravel
+
 - ✅ Config/route/view cache
 - ✅ Optimized autoloader
 - ✅ Production environment
@@ -285,9 +288,9 @@ En caso de falla, ejecutar rollback:
 
 | Ambiente | Descripción | URL |
 |----------|-------------|-----|
-| **Development** | Local con hot-reload | http://localhost:8000 |
-| **Staging** | Testing pre-producción | http://staging-server:8000 |
-| **Production** | Ambiente productivo | https://your-domain.com |
+| **Development** | Local con hot-reload | <http://localhost:8000> |
+| **Staging** | Testing pre-producción | <http://staging-server:8000> |
+| **Production** | Ambiente productivo | <https://your-domain.com> |
 
 ## 📝 Próximos Pasos
 
