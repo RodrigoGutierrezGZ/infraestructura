@@ -5,14 +5,14 @@
 
 - name: Restart application
   community.docker.docker_compose_v2:
-    project_src: "{{ app_directory }}/infraestructura/docker"
+    project_src: "{{ app_directory }}"
     state: restarted
   listen: "Restart application"
   tags: ['handlers']
 
 - name: Rebuild application
   community.docker.docker_compose_v2:
-    project_src: "{{ app_directory }}/infraestructura/docker"
+    project_src: "{{ app_directory }}"
     build: always
     state: present
   listen: "Rebuild application"
