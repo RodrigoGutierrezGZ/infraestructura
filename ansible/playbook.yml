@@ -4,9 +4,9 @@
 # =========================================
 - name: Deploy Laravel API with Docker
   hosts: web_servers
-  become: yes
-  gather_facts: yes
-  
+  become: true
+  gather_facts: true
+
   vars:
     # Variables del proyecto
     project_name: "laravel-api"
@@ -16,22 +16,22 @@
     app_directory: "/opt/{{ project_name }}"
     app_port: 8000
     docker_compose_version: "v2.23.0"
-    
+
     # Variables Docker Registry - REQUISITOS FASE 2 PDF
     docker_image: "ghcr.io/rodrigogutierrezgz/api-laravel:latest"
     docker_registry_login: true
     github_token: "{{ vault_github_token | default('') }}"
-    
+
     # Variables de base de datos - COINCIDEN CON TEMPLATE
     db_name: "laravel_api"
     db_user: "laravel"
     db_password: "{{ vault_mysql_password | default('secure_password') }}"
     db_port: 3306
-    
+
     # Variables Redis
     redis_password: "{{ vault_redis_password | default('redis_secret') }}"
     redis_port: 6379
-    
+
     # Variables de aplicación
     app_key: "{{ vault_app_key | default('base64:your-app-key-here') }}"
     app_env: "{{ deploy_env | default('production') }}"
@@ -39,14 +39,14 @@
 
   pre_tasks:
     - name: Update package cache (Ubuntu)
-      apt:
-        update_cache: yes
+      ansible.builtin.apt:
+        update_cache: true
         cache_valid_time: 3600
       when: ansible_os_family == "Debian"
 
     - name: Update package cache (CentOS/RHEL)
-      yum:
-        update_cache: yes
+      ansible.builtin.yum:
+        update_cache: true
       when: ansible_os_family == "RedHat"
 
   roles:
@@ -84,7 +84,7 @@
   hosts: web_servers
   become: yes
   tags: ['never', 'rollback']
-  
+
   tasks:
     - name: Stop current containers
       community.docker.docker_compose_v2:

@@ -19,10 +19,8 @@
   tags: ['handlers']
 
 - name: clear cache
-  community.docker.docker_compose_v2:
-    project_src: "{{ app_directory }}/infraestructura/docker"
-    services: [app]
-    run:
-      cmd: ["/bin/sh", "-c", "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear"]
+  community.docker.docker_container_exec:
+    container: "{{ app_name }}"
+    command: /bin/sh -c "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan cache:clear"
   listen: "clear cache"
   tags: ['handlers']
